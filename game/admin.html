@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src-admin/styles.css">
+    <title>Админка — Mortal Sales</title>
+</head>
+<body>
+    <div class="scene-glow"></div>
+    <div class="admin-card">
+        <div class="eyebrow">Mortal Sales</div>
+        <h1 id="title">Панель управления</h1>
+
+        <form id="pin-form" class="login">
+            <label for="pin">PIN-код</label>
+            <input id="pin" name="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••" required />
+            <button type="submit">Войти<span class="btn-arrow">→</span></button>
+        </form>
+
+        <div id="panel" hidden>
+            <nav id="tab-nav" class="tabs" role="tablist"></nav>
+            <div id="tab-content"></div>
+            <button type="button" id="logout" class="ghost logout">Выйти</button>
+        </div>
+
+        <p id="status" role="status"></p>
+    </div>
+
+    <script type="module" src="/src-admin/main.ts"></script>
+</body>
+</html>

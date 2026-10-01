@@ -1,0 +1,11 @@
+{
+    "_comment": "Department codes (the leader / РГ group codes used in the sheet) -> heroRoster.json slug. Check that the codes match the new sheet's 'Команда' tab exactly (case/spacing).",
+    "mapping": {
+        "СР1": "hero_lion",
+        "СР2": "hero_scrooge",
+        "СР3": "hero_grinch",
+        "СР5": "hero_yoda",
+        "СР6": "hero_neznaika",
+        "СР9": "hero_minion"
+    }
+}

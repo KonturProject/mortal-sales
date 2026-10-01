@@ -1,0 +1,30 @@
+{
+  "name": "mortal-sales",
+  "description": "Office-display sales game: department mascots fight in pairs, Mortal Kombat style, fed by invoice counts (Phaser 4 + Vite + TypeScript).",
+  "version": "2.0.0-dev",
+  "private": true,
+  "author": "Phaser Studio <support@phaser.io> (https://phaser.io/)",
+  "license": "MIT",
+  "licenseUrl": "http://www.opensource.org/licenses/mit-license.php",
+  "scripts": {
+    "dev": "vite --config vite/config.dev.mjs",
+    "build": "vite build --config vite/config.prod.mjs",
+    "dev-nolog": "vite --config vite/config.dev.mjs",
+    "build-nolog": "vite build --config vite/config.prod.mjs",
+    "deploy": "node tools/deploy-guard.mjs && npm run build-nolog && gh-pages -d dist",
+    "mock-backend": "node tools/mock-backend.mjs",
+    "serve-dist": "node tools/serve-dist.mjs",
+    "test:backend": "node --test ../apps-script/test/backend.test.mjs",
+    "test:fight": "node --test tests/fight-planner.test.mjs tests/game-logic.test.mjs tests/admin-parse.test.mjs"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0",
+    "typescript": "~5.7.2",
+    "vite": "^6.3.1"
+  },
+  "dependencies": {
+    "phaser": "4.0.0",
+    "read-excel-file": "^9.3.10",
+    "terser": "^5.39.0"
+  }
+}
