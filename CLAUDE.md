@@ -23,9 +23,11 @@ How *hard* a fight is depends on the **target** average per employee (1.20, an a
 
 ## Isolation (don't undo)
 
-This checkout has **no git `origin`** on purpose; `npm run deploy` runs `game/tools/deploy-guard.mjs` first (refuses a missing remote or anything containing
-"sales-vs-dragon"). `game/public/config.json` has no backend URL (`useMock: true`) until a new Apps Script is deployed; `Code.gs` has a placeholder
-`SPREADSHEET_ID`. A new repo, a new Google Sheet and a new Apps Script (own PIN) are to be created by the user; publish only after they say so.
+Own repo `KonturProject/mortal-sales` (public, `origin`; `main` starts from one squashed commit — the full local history is on branch `master` and is NOT to be pushed: an early commit holds a name-like
+string in a test fixture). `npm run deploy` runs `game/tools/deploy-guard.mjs` first (refuses a missing remote or anything containing "sales-vs-dragon") and publishes `dist` to `gh-pages`
+(site https://konturproject.github.io/mortal-sales/). `game/public/config.json` holds the Web App URL of the new Apps Script (`useMock: false`; public on purpose — it answers nothing without the display key).
+The repo's `Code.gs` keeps the placeholder `SPREADSHEET_ID`: the deployed copy (container-bound script of the new sheet "Mortal Sales - данные", deployed by hand) has the real one, and the PIN is set from the sheet's menu
+"Mortal Sales" — neither is ever committed.
 **Employee data never goes into git**: `*.xlsx/*.xls/*.csv` are ignored, mock data (`tools/make-mock-status.mjs`, `apps-script/test/mock-roster.json`) is
 invented. Third-party audio goes in git-ignored `game/public/assets/audio/` (the repo and Pages are public).
 
@@ -119,5 +121,5 @@ Dev-only URL parameters: `?backend=<url>` (talk to the mock backend) and `?pollm
 ## Open items
 
 Music and the "Fight!" voice (files from the user → `public/assets/audio/`, loaded with fade; the synthesized `AudioSystem` sounds are the stand-in; `AudioSystem.unlockOnGesture()` already resumes sound after a reload),
-extra poses from the user (`assets-source/new-game/README.md`), a new repo + Sheet + Apps Script deployment (verify on a copy of the sheet first — the backend was only tested on a fake Google), tuning
-`FIGHT_TUNING` thresholds on real numbers. Ideas: undo for "finish day".
+extra poses from the user (`assets-source/new-game/README.md`), tuning `FIGHT_TUNING` thresholds on real numbers, a full pass of the admin flow on the real backend (finish day / new week on a copy of the sheet first).
+Ideas: undo for "finish day".
