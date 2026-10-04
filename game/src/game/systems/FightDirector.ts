@@ -68,8 +68,8 @@ export class FightDirector {
 
     /**
      * The day's verdict for one pair. A draw: both bow. Otherwise the day's winner finishes the loser off — two
-     * quick blows and a heavy one that sends the loser flying — and at the moment the loser lands the HUD breaks
-     * one of their stars. Resolves when both are home (or, for the match loser, the caller lays them down later).
+     * quick blows and a heavy one that sends the loser flying — and at the moment the loser lands the HUD lights
+     * the winner's next star. Resolves when both are home (or, for the match loser, the caller lays them down later).
      */
     async playFinalePair(result: FinaleResult, left: Fighter, right: Fighter): Promise<void> {
         left.engaged = right.engaged = true;

@@ -40,7 +40,7 @@ test('first use creates every tab with its headers and the default departments, 
     assert.deepEqual(b.sheetNames().sort(), ['Дни', 'Команда', 'Настройки', 'Пары', 'Подразделения', 'Снимки'].sort());
     assert.deepEqual(status.period, { id: 1, dayIndex: 0, daysTotal: 5, state: 'active' });
     assert.deepEqual(status.pairs, [{ id: 1, left: 'СР1', right: 'СР3' }, { id: 2, left: 'СР2', right: 'СР5' }, { id: 3, left: 'СР6', right: 'СР9' }]);
-    assert.deepEqual(status.leaders.map(l => [l.rop, l.stars, l.staff, l.dayCount]), ['СР1', 'СР2', 'СР3', 'СР5', 'СР6', 'СР9'].map(c => [c, 5, 0, 0]));
+    assert.deepEqual(status.leaders.map(l => [l.rop, l.stars, l.staff, l.dayCount]), ['СР1', 'СР2', 'СР3', 'СР5', 'СР6', 'СР9'].map(c => [c, 0, 0, 0]));
     assert.equal(status.lastImport, null);
     assert.deepEqual(status.commands, []);
     assert.equal(status.serverNow, b.now());
@@ -71,7 +71,7 @@ test('the public GET is cached for a few seconds and every write drops the cache
 test('wrong PIN is refused and changes nothing', () => {
     const b = withTeam();
     assert.deepEqual(b.post({ pin: '0000', action: 'setStars', rop: 'СР1', stars: 1 }), { ok: false, error: 'invalid_pin' });
-    assert.equal(leader(b.get(), 'СР1').stars, 5);
+    assert.equal(leader(b.get(), 'СР1').stars, 0);
 });
 
 test('login checks the PIN; missing or absurd PINs fail; an unknown action is refused', () => {
@@ -351,20 +351,20 @@ test('finishDay decides a pair by the AVERAGE per employee: the bigger group wit
     assert.deepEqual([p1.winner, p1.leftSum, p1.leftStaff, p1.leftAvg, p1.rightAvg], ['СР3', 9, 6, 1.5, 2]);
     assert.equal(p2.winner, 'draw', 'equal averages');
     assert.equal(p3.winner, 'draw', 'two empty groups');
-    assert.deepEqual([p1.starsBefore, p1.starsAfter], [{ 'СР1': 5, 'СР3': 5 }, { 'СР1': 4, 'СР3': 5 }]);
-    assert.deepEqual(p2.starsAfter, { 'СР2': 5, 'СР5': 5 });
+    assert.deepEqual([p1.starsBefore, p1.starsAfter], [{ 'СР1': 0, 'СР3': 0 }, { 'СР1': 0, 'СР3': 1 }], 'the winner gains a star');
+    assert.deepEqual(p2.starsAfter, { 'СР2': 0, 'СР5': 0 }, 'a draw gives none');
 
     const status = b.get();
-    assert.deepEqual([leader(status, 'СР1').stars, leader(status, 'СР3').stars, leader(status, 'СР2').stars], [4, 5, 5]);
+    assert.deepEqual([leader(status, 'СР1').stars, leader(status, 'СР3').stars, leader(status, 'СР2').stars], [0, 1, 0]);
     // the day is archived, the week keeps the counts, the new day starts from zero
     assert.deepEqual([leader(status, 'СР1').dayCount, leader(status, 'СР1').periodCount], [0, 9]);
     assert.deepEqual([status.period.dayIndex, status.period.state], [1, 'active']);
     assert.equal(b.table('Дни').length, 6);
-    assert.deepEqual(b.table('Дни')[0].filter((_, i) => ![3].includes(i)), [1, 1, 1, 'СР1', 9, 6, 1.5, 1, 'поражение', 4]);
+    assert.deepEqual(b.table('Дни')[0].filter((_, i) => ![3].includes(i)), [1, 1, 1, 'СР1', 9, 6, 1.5, 1, 'поражение', 0]);
     assert.equal(b.table('Дни')[2][9], 'победа');
     assert.equal(b.table('Дни')[4][9], 'ничья');
-    assert.deepEqual(b.table('Подразделения')[0].slice(3), [4, 0, 1, 0]);
-    assert.deepEqual(b.table('Подразделения')[2].slice(3), [5, 1, 0, 0]);
+    assert.deepEqual(b.table('Подразделения')[0].slice(3), [0, 0, 1, 0]);
+    assert.deepEqual(b.table('Подразделения')[2].slice(3), [1, 1, 0, 0]);
 
     // the displays get the result as a command
     const finale = status.commands.find(c => c.type === 'finale');
@@ -392,13 +392,13 @@ test('finishDay refuses without pairs', () => {
 test('the week: after the last day each pair\'s match goes to the one with more stars; level stars → the higher weekly average', () => {
     const b = withTeam({ 'СР1': 2, 'СР3': 2 });
     assert.equal(b.post({ action: 'setSettings', daysPerPeriod: 2 }).ok, true);
-    // day 1: СР1 wins (avg 5 vs 1); day 2: СР3 wins (avg 2 vs 1) — stars 4:4, weekly averages 6 vs 3 → СР1 takes the match
+    // day 1: СР1 wins (avg 5 vs 1); day 2: СР3 wins (avg 2 vs 1) — stars 1:1, weekly averages 6 vs 3 → СР1 takes the match
     b.post({ action: 'importSnapshot', rows: [...rowsFor('СР1', [5, 5]), ...rowsFor('СР3', [1, 1])] });
     assert.equal(b.post({ action: 'finishDay' }).periodFinished, false);
     b.post({ action: 'importSnapshot', rows: [...rowsFor('СР1', [1, 1]), ...rowsFor('СР3', [2, 2])] });
     const last = b.post({ action: 'finishDay' });
     assert.equal(last.periodFinished, true);
-    assert.deepEqual([leader(b.get(), 'СР1').stars, leader(b.get(), 'СР3').stars], [4, 4]);
+    assert.deepEqual([leader(b.get(), 'СР1').stars, leader(b.get(), 'СР3').stars], [1, 1]);
     assert.equal(last.matchWinners['1'], 'СР1');
 
     const status = b.get();
@@ -411,13 +411,32 @@ test('the week: after the last day each pair\'s match goes to the one with more 
     assert.equal(b.post({ action: 'importSnapshot', rows: rowsFor('СР1', [9, 9]) }).error, 'period_finished');
     assert.equal(b.post({ action: 'finishDay' }).error, 'period_finished');
 
-    // a new week: stars back, counters cleared, the match running
+    // a new week: no stars, counters cleared, the match running
     assert.equal(b.post({ action: 'newPeriod' }).periodId, 2);
     const fresh = b.get();
     assert.deepEqual(fresh.period, { id: 2, dayIndex: 0, daysTotal: 2, state: 'active' });
-    assert.deepEqual(fresh.leaders.map(l => [l.stars, l.dayCount, l.periodCount]), fresh.leaders.map(() => [5, 0, 0]));
-    assert.deepEqual(b.table('Подразделения').map(r => r.slice(3)), b.table('Подразделения').map(() => [5, 0, 0, 0]));
+    assert.deepEqual(fresh.leaders.map(l => [l.stars, l.dayCount, l.periodCount]), fresh.leaders.map(() => [0, 0, 0]));
+    assert.deepEqual(b.table('Подразделения').map(r => r.slice(3)), b.table('Подразделения').map(() => [0, 0, 0, 0]));
     assert.equal(b.post({ action: 'importSnapshot', rows: rowsFor('СР1', [1, 1]) }).ok, true);
+});
+
+test('a star is a day won: the winner gains one, the loser and a draw gain nothing, never above the 5 slots', () => {
+    const b = withTeam({ 'СР1': 1, 'СР3': 1 });
+    const stars = () => [leader(b.get(), 'СР1').stars, leader(b.get(), 'СР3').stars];
+    assert.deepEqual(stars(), [0, 0], 'a week starts with empty stars');
+    b.post({ action: 'importSnapshot', rows: [...rowsFor('СР1', [3]), ...rowsFor('СР3', [1])] });
+    b.post({ action: 'finishDay' });
+    assert.deepEqual(stars(), [1, 0]);
+    b.post({ action: 'importSnapshot', rows: [...rowsFor('СР1', [1]), ...rowsFor('СР3', [2])] });
+    b.post({ action: 'finishDay' });
+    assert.deepEqual(stars(), [1, 1]);
+    b.post({ action: 'importSnapshot', rows: [...rowsFor('СР1', [2]), ...rowsFor('СР3', [2])] });
+    b.post({ action: 'finishDay' });
+    assert.deepEqual(stars(), [1, 1], 'a draw gives nothing');
+    b.post({ action: 'setStars', rop: 'СР1', stars: 5 });
+    b.post({ action: 'importSnapshot', rows: [...rowsFor('СР1', [4]), ...rowsFor('СР3', [1])] });
+    b.post({ action: 'finishDay' });
+    assert.deepEqual(stars(), [5, 1], 'never above 5');
 });
 
 test('the match is decided by stars when they differ (more stars wins)', () => {
@@ -435,11 +454,11 @@ test('setStars corrects a department\'s stars within 0..5', () => {
     assert.equal(b.post({ action: 'setStars', rop: 'СР0', stars: 1 }).field, 'rop');
 });
 
-test('setSettings: days per week 1..10', () => {
+test('setSettings: days per week 1..5 (one star slot per day)', () => {
     const b = loadBackend();
     assert.equal(b.post({ action: 'setSettings', daysPerPeriod: 4 }).daysPerPeriod, 4);
     assert.equal(b.get().period.daysTotal, 4);
-    for (const daysPerPeriod of [0, 11, 2.5, 'x']) assert.equal(b.post({ action: 'setSettings', daysPerPeriod }).field, 'daysPerPeriod');
+    for (const daysPerPeriod of [0, 6, 11, 2.5, 'x']) assert.equal(b.post({ action: 'setSettings', daysPerPeriod }).field, 'daysPerPeriod');
 });
 
 /* ----------------------------------------------------------------- history */
@@ -459,7 +478,7 @@ test('listSnapshots / listDays: newest first, limited, filterable by import', ()
     b.post({ action: 'finishDay' });
     const days = b.post({ action: 'listDays' });
     assert.equal(days.total, 6);
-    assert.deepEqual(days.rows.find(r => r.dept === 'СР1'), { dayId: 1, periodId: 1, dayNo: 1, time: '2026-09-30 10:00', dept: 'СР1', sum: 5, staff: 2, avg: 2.5, pair: 1, outcome: 'победа', starsAfter: 5 }, 'a group with people beats an empty one');
+    assert.deepEqual(days.rows.find(r => r.dept === 'СР1'), { dayId: 1, periodId: 1, dayNo: 1, time: '2026-09-30 10:00', dept: 'СР1', sum: 5, staff: 2, avg: 2.5, pair: 1, outcome: 'победа', starsAfter: 1 }, 'a group with people beats an empty one');
 });
 
 /* ----------------------------------------------------------------- display key / commands */
@@ -491,7 +510,8 @@ test('commands: demo fight, demo finale, confetti; validated; the queue keeps te
     assert.equal(demo.args.demo, true);
     assert.equal(demo.args.results[0].winner, 'СР1');
     assert.deepEqual(demo.args.results[0].starsBefore, demo.args.results[0].starsAfter, 'a demo takes no star');
-    assert.equal(leader(b.get(), 'СР3').stars, 5);
+    assert.equal(leader(b.get(), 'СР3').stars, 0);
+    assert.equal(leader(b.get(), 'СР1').stars, 0);
 
     for (let i = 0; i < 12; i++) b.post({ action: 'command', type: 'confetti' });
     const queue = b.get().commands;
@@ -519,13 +539,13 @@ test('the target average is a setting (default 1.20), reaches the screens, and i
     assert.equal(b.post({ action: 'getAdminState' }).settings.targetAvg, 1.2);
 });
 
-test('a department listed in two pairs of a hand-edited sheet fights only once (it must not lose two stars in a day)', () => {
+test('a department listed in two pairs of a hand-edited sheet fights only once (it must not earn two stars in a day)', () => {
     const b = withTeam({ 'СР1': 1, 'СР2': 1, 'СР3': 1 });
     b.sheet('Пары').getRange(2, 1, 3, 3).setValues([[1, 'СР1', 'СР3'], [2, 'СР1', 'СР2'], [3, 'СР2', 'СР5']]);
     assert.deepEqual(b.get().pairs.map(p => [p.left, p.right]), [['СР1', 'СР3'], ['СР2', 'СР5']]);
     b.post({ action: 'importSnapshot', rows: [...rowsFor('СР1', [1]), ...rowsFor('СР3', [3]), ...rowsFor('СР2', [1])] });
     b.post({ action: 'finishDay' });
-    assert.deepEqual(b.get().leaders.map(l => [l.rop, l.stars]), [['СР1', 4], ['СР2', 5], ['СР3', 5], ['СР5', 4], ['СР6', 5], ['СР9', 5]], 'СР1 lost to СР3, СР5 (empty) lost to СР2; nobody lost twice');
+    assert.deepEqual(b.get().leaders.map(l => [l.rop, l.stars]), [['СР1', 0], ['СР2', 1], ['СР3', 1], ['СР5', 0], ['СР6', 0], ['СР9', 0]], 'СР3 beat СР1, СР2 beat the empty СР5; nobody earned twice');
 });
 
 test('a tab that somebody deleted or renamed is created again instead of failing every request', () => {
@@ -555,16 +575,19 @@ test('names match whatever way the letters are encoded (composed or decomposed "
 
 test('the command queue is trimmed by size (a Script Property holds 9 KB), newest first to survive', () => {
     const b = withTeam({ 'СР1': 1, 'СР3': 1, 'СР2': 1, 'СР5': 1, 'СР6': 1, 'СР9': 1 });
-    b.post({ action: 'setSettings', daysPerPeriod: 10 });
-    for (let day = 0; day < 9; day++) {
+    let lastDayNo = 0;
+    for (let day = 0; day < 9; day++) { // a week has at most 5 days: the 6th finale is the first day of week 2
         b.post({ action: 'importSnapshot', rows: names('СР1', 1).map(name => ({ name, count: day + 1 })) });
-        assert.equal(b.post({ action: 'finishDay' }).ok, true, `day ${day + 1}`);
+        const res = b.post({ action: 'finishDay' });
+        assert.equal(res.ok, true, `day ${day + 1}`);
+        lastDayNo = res.dayNo;
+        if (res.periodFinished) assert.equal(b.post({ action: 'newPeriod' }).ok, true);
     }
     const raw = b.props.get('COMMANDS');
     assert.ok(raw.length < 9000, `queue JSON is ${raw.length} chars`);
     const queue = b.get().commands;
     assert.ok(queue.length >= 1);
-    assert.equal(queue.at(-1).args.dayNo, 9, 'the newest finale is always kept');
+    assert.equal(queue.at(-1).args.dayNo, lastDayNo, 'the newest finale is always kept');
 });
 
 test('history listing reads only the newest rows of a huge tab and still reports the real total', () => {

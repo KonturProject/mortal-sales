@@ -2,7 +2,7 @@ import { MATCH } from './Constants';
 import { average, DEFAULT_TARGET_AVG } from './Average';
 export { average };
 
-/** Backend view of one leader (РГ). `stars` are the lives left in the current match. */
+/** Backend view of one leader (РГ). `stars` are the days won in the current match (0..5). */
 export interface LeaderStatus {
     rop: string;
     stars: number;

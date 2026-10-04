@@ -6,18 +6,18 @@ import { AudioSystem } from '../systems/Audio';
 
 const LIT = { fill: 0xffd23a, stroke: 0x8a5a00 };
 const DIM = { fill: 0x1a2030, stroke: 0x424c66 };
-const HOT = 0xff3b2e;
+const FLASH = 0xffffff;
 
 /**
- * A leader's lives: MATCH.STARS stars, the first `count` lit. Losing one is an event of its own (the star swells,
- * shakes and drops away), so it is animated by `breakStar`, never by a plain `setCount`.
+ * A leader's wins of the week: MATCH.STARS slots, the first `count` lit — one star per day won. A star is earned in the
+ * finale (an event of its own: it flashes, swells and settles), so it is animated by `earnStar`, never by a plain `setCount`.
  */
 export class StarRow extends GameObjects.Container {
     private stars: GameObjects.Star[] = [];
-    private lit: number = MATCH.STARS;
+    private lit: number = 0;
     private readonly gap: number;
 
-    /** @param mirror stars run from the centre outwards on the right-hand side, so the lost one is always the one nearest the name */
+    /** @param mirror stars run from the screen edge inwards on both sides, so the newest star is always the one nearest the name */
     constructor(scene: Scene, x: number, y: number, size = 7, mirror = false) {
         super(scene, x, y);
         this.gap = size * 2 + 3;
@@ -54,22 +54,22 @@ export class StarRow extends GameObjects.Container {
         return this.lit;
     }
 
-    /** The star at index `newCount` (the last lit one) goes out. Resolves when it has fallen and the row shows `newCount`. */
-    async breakStar(newCount: number): Promise<void> {
+    /** The star at index `lit` lights up. Resolves when it has settled and the row shows `newCount`. */
+    async earnStar(newCount: number): Promise<void> {
         const next = Math.max(0, Math.min(MATCH.STARS, Math.round(newCount)));
-        if (next >= this.lit) { // not a loss (a correction upwards, or no change): just show it
+        if (next <= this.lit) { // not a gain (a correction downwards, or no change): just show it
             this.setCount(next);
             return;
         }
-        const star = this.stars[next];
+        const star = this.stars[next - 1];
+        this.paint(next - 1); // anything between (a missed update) is shown at once, the new star is the one that is played
         this.lit = next;
-        AudioSystem.playStarBreak();
-        star.setFillStyle(HOT, 1);
-        emitBurst(this.scene, this.x + star.x, this.y + star.y, LIT.fill, 10);
-        await tweenTo(this.scene, { targets: star, scale: 1.9, duration: 140, ease: 'Back.easeOut' });
-        await tweenTo(this.scene, { targets: star, angle: 22, duration: 60, yoyo: true, repeat: 3, ease: 'Sine.easeInOut' });
-        await tweenTo(this.scene, { targets: star, y: star.y + 38, angle: 200, alpha: 0, duration: 420, ease: 'Quad.easeIn' });
-        star.setPosition(star.x, 0).setAngle(0).setScale(1).setAlpha(1);
+        AudioSystem.playStarGain();
+        star.setFillStyle(FLASH, 1).setStrokeStyle(1.5, LIT.fill, 1);
+        emitBurst(this.scene, this.x + star.x, this.y + star.y, LIT.fill, 12);
+        await tweenTo(this.scene, { targets: star, scale: 2.2, duration: 160, ease: 'Back.easeOut' });
+        star.setFillStyle(LIT.fill, 1).setStrokeStyle(1.5, LIT.stroke, 1);
+        await tweenTo(this.scene, { targets: star, scale: 1, duration: 260, ease: 'Bounce.easeOut' });
         this.paint(next);
     }
 }

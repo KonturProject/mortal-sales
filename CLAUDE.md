@@ -8,8 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 (`KonturProject/sales-vs-dragon`, which is a separate, running product — never touch its repo, sheet or Web App from here). Six pixel-art department
 mascots (the same heroes) are the leaders (РГ, "группа") of six sales departments; they are set in 3 pairs and fight Mortal-Kombat style in a temple
 courtyard, three on each side, seen from a distance. Every import of "invoices from 20 minutes" per manager (about every 2 hours, uploaded through the
-admin page) starts a round of fights; the admin ends the *game day* with a button, which plays a finale ("FINISH HIM!") and takes a star (life, 5 per
-leader per week) from each pair's loser. After 5 days the pair's match goes to the one with more stars. A rating of all managers (absolute invoice counts)
+admin page) starts a round of fights; the admin ends the *game day* with a button, which plays a finale ("FINISH HIM!") and gives a star (one per day won,
+at most 5 per leader per week; a week starts with none) to each pair's winner. After 5 days the pair's match goes to the one with more stars. A rating of all managers (absolute invoice counts)
 is shown in two side panels. Russian UI everywhere.
 
 **The central rule: fights and day results compare AVERAGE invoices per active employee** (day total / staff of the department), never raw totals — a bigger
@@ -40,7 +40,7 @@ npm run dev                 # dev server http://127.0.0.1:8080 (bound to IPv4 on
 npm run build               # production build to game/dist: two entries, index.html (game) + admin.html
 npx tsc --noEmit -p tsconfig.json
 npm run test:fight          # node --test, 33 tests: FightPlanner, pure game logic (FightPairs, names), admin file parsers (node >= 22.18 runs the .ts directly — so the pure modules import with explicit .ts and `import type`; the parser tests also read the real xlsx files from the repo root when present)
-npm run test:backend        # node --test, 48 tests: the real apps-script/Code.gs against fake Google services
+npm run test:backend        # node --test, 49 tests: the real apps-script/Code.gs against fake Google services
 npm run serve-dist          # the production build under /mortal-sales/ like GitHub Pages (http://127.0.0.1:8090/mortal-sales/) — run `npm run build` first
 npm run mock-backend        # Code.gs on http://127.0.0.1:8787/exec (PIN 1234, display key mock-display-key-1234, 65 invented managers, in memory)
 node tools/make-mock-status.mjs   # regenerate public/assets/mock/mock-status.json and apps-script/test/mock-roster.json (invented names)
@@ -77,7 +77,7 @@ A toppled body reaches a body length beyond its feet: `Fighter.lieX` keeps it in
 **Fight mechanics** (`systems/FightPlanner.ts`, pure, tuning in `FIGHT_TUNING`): `D = min(1, |a−b| / target)` of the two AVERAGES (so 1.92 vs 2.42 with a 1.20 target is 42 % of the target = domination), damped by evidence `min(1, sample/10)` (sample = raw invoices of both
 groups), leader blows `2 + round(6·D_eff)`, trailing side `max(1, round(nL·(1−D_eff)^1.6))` (both always fight), four tiers (even / upper hand = stun / domination = knockdown / rout = launch across the
 arena with screen shake and hit-stop). `FightDirector` turns a plan into choreography per pair; `ArenaScene` runs the pairs of a round side by side and queues rounds/finales one after another.
-The finale: per pair "FINISH HIM!", two blows and a heavy one that launches the loser; at the landing `FINALE_PAIR` makes the HUD break the loser's star. After the last day the matches are decided;
+The finale: per pair "FINISH HIM!", two blows and a heavy one that launches the loser; at the landing `FINALE_PAIR` makes the HUD light the winner's next star (`StarRow.earnStar`). After the last day the matches are decided;
 the arena then shows the verdict statically (winners labelled, losers down) — also when a display is opened after the week ended.
 
 **Baseline & staleness gotchas** (all deliberate): the first poll after page load only sets the baseline — no fight, no finale replay, commands older than `POLL.COMMAND_MAX_AGE_MS` by the

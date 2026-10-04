@@ -30,6 +30,7 @@ var SPREADSHEET_ID = 'REPLACE_WITH_NEW_SPREADSHEET_ID';
 /** One department code per mascot of the game (game/src/game/config/ropMapping.json). */
 var DEPT_CODES = ['СР1', 'СР2', 'СР3', 'СР5', 'СР6', 'СР9'];
 var DEFAULT_PAIRS = [['СР1', 'СР3'], ['СР2', 'СР5'], ['СР6', 'СР9']];
+/** A star is a day won this week (0..STARS_MAX): the star slots of the screen, and so also the longest match (days per week). */
 var STARS_MAX = 5;
 var MAX_PAIRS = 3;
 var DEFAULT_DAYS_PER_PERIOD = 5;
@@ -224,7 +225,7 @@ function createSheet_(key) {
 }
 
 function defaultRows_(key) {
-  if (key === 'depts') return DEPT_CODES.map(function (code) { return [code, '', '', STARS_MAX, 0, 0, 0]; });
+  if (key === 'depts') return DEPT_CODES.map(function (code) { return [code, '', '', 0, 0, 0, 0]; });
   if (key === 'pairs') return DEFAULT_PAIRS.map(function (p, i) { return [i + 1, p[0], p[1]]; });
   if (key === 'settings') return settingsRows_(defaultSettings_());
   return [];
@@ -300,7 +301,7 @@ function readSettings_() {
     DayIndex: num_(raw.DayIndex, d.DayIndex),
     DayId: num_(raw.DayId, d.DayId),
     ImportSeq: num_(raw.ImportSeq, d.ImportSeq),
-    DaysPerPeriod: Math.min(10, Math.max(1, Math.floor(num_(raw.DaysPerPeriod, d.DaysPerPeriod)))),
+    DaysPerPeriod: Math.min(STARS_MAX, Math.max(1, Math.floor(num_(raw.DaysPerPeriod, d.DaysPerPeriod)))),
     TargetAvg: num_(raw.TargetAvg, d.TargetAvg) > 0 ? Math.min(50, num_(raw.TargetAvg, d.TargetAvg)) : d.TargetAvg,
     PeriodWinners: parseJson_(raw.PeriodWinners, {}),
     LastImport: parseJson_(raw.LastImport, null)
@@ -335,12 +336,12 @@ function loadModel_() {
     if (!code) return;
     byCode[code] = {
       code: code, title: String(r[1]).trim(), leader: String(r[2]).trim(),
-      stars: Math.min(STARS_MAX, Math.max(0, Math.floor(num_(r[3], STARS_MAX)))),
+      stars: Math.min(STARS_MAX, Math.max(0, Math.floor(num_(r[3], 0)))),
       wins: num_(r[4], 0), losses: num_(r[5], 0), draws: num_(r[6], 0)
     };
   });
   var depts = DEPT_CODES.map(function (code) {
-    return byCode[code] || { code: code, title: '', leader: '', stars: STARS_MAX, wins: 0, losses: 0, draws: 0 };
+    return byCode[code] || { code: code, title: '', leader: '', stars: 0, wins: 0, losses: 0, draws: 0 };
   });
 
   var pairs = [];
@@ -351,7 +352,7 @@ function loadModel_() {
     pairs.push({ id: num_(r[0], pairs.length + 1), left: left, right: right });
   });
   pairs.sort(function (a, b) { return a.id - b.id; });
-  // A department fights in at most one pair: a hand-edited sheet that lists it twice must not take two stars off one day.
+  // A department fights in at most one pair: a hand-edited sheet that lists it twice must not earn two stars in one day.
   var used = {};
   pairs = pairs.filter(function (p) {
     if (used[p.left] || used[p.right]) return false;
@@ -819,7 +820,7 @@ function outcomeLabel_(code, winner) {
 }
 
 /**
- * Ends the day: decides every pair by the average invoices per employee, takes a star from each loser, archives the
+ * Ends the day: decides every pair by the average invoices per employee, gives a star to each winner, archives the
  * day, rolls today's counts into the week's, zeroes the day and — after the last day of the week — decides the
  * match of each pair (more stars wins; level on stars: the higher weekly average). The displays play the result
  * as a `finale` command; the recorded numbers do not depend on any display being open.
@@ -852,7 +853,7 @@ function actionFinishDay_() {
         var loserDept = winner === pair.left ? right : left;
         winnerDept.wins++;
         loserDept.losses++;
-        loserDept.stars = Math.max(0, loserDept.stars - 1);
+        winnerDept.stars = Math.min(STARS_MAX, winnerDept.stars + 1);
       }
       var starsAfter = {};
       starsAfter[pair.left] = left.stars;
@@ -911,7 +912,7 @@ function actionFinishDay_() {
   });
 }
 
-/** A new week: stars back to full, counters of the week and the day back to zero, the match running again. */
+/** A new week: no stars yet, counters of the week and the day back to zero, the match running again. */
 function actionNewPeriod_() {
   return withLock_(function () {
     var model = loadModel_();
@@ -920,7 +921,7 @@ function actionNewPeriod_() {
     s.PeriodState = 'active';
     s.DayIndex = 0;
     s.PeriodWinners = {};
-    model.depts.forEach(function (d) { d.stars = STARS_MAX; d.wins = 0; d.losses = 0; d.draws = 0; });
+    model.depts.forEach(function (d) { d.stars = 0; d.wins = 0; d.losses = 0; d.draws = 0; });
     model.team.forEach(function (m) { m.day = 0; m.prior = 0; });
     writeRows_('team', teamRows_(model.team));
     writeRows_('depts', deptRows_(model.depts));
@@ -952,7 +953,7 @@ function actionSetSettings_(body) {
   if (!hasDays && !hasTarget) return badRequest_('daysPerPeriod');
   var days = hasDays ? strictNumber_(body.daysPerPeriod) : 0;
   var target = hasTarget ? strictNumber_(body.targetAvg) : 0;
-  if (hasDays && (!isFinite(days) || days < 1 || days > 10 || days !== Math.floor(days))) return badRequest_('daysPerPeriod');
+  if (hasDays && (!isFinite(days) || days < 1 || days > STARS_MAX || days !== Math.floor(days))) return badRequest_('daysPerPeriod');
   if (hasTarget && (!isFinite(target) || target <= 0 || target > 50)) return badRequest_('targetAvg');
   return withLock_(function () {
     var s = readSettings_();

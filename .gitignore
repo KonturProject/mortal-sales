@@ -18,3 +18,6 @@ game/public/assets/audio/*
 .claude/
 .agents/
 skills-lock.json
+
+# Third-party sound clips the owner drops here to be wired into the game later: the repo and Pages are public, so they stay local
+sounds/

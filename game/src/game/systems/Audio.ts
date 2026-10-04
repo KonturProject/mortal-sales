@@ -89,11 +89,12 @@ class AudioSystemImpl {
         this.tone(520, 'triangle', 0.01, 0.22, 0.2);
     }
 
-    /** A star of the loser cracking. */
-    playStarBreak() {
-        this.tone(1320, 'triangle', 0.002, 0.12);
-        this.tone(880, 'square', 0.002, 0.16, 0.08);
-        this.noiseBurst(0.2, 0.1, 'highpass', 2500);
+    /** A star of the day's winner lighting up: a short rising chime with a sparkle on top. */
+    playStarGain() {
+        this.tone(880, 'triangle', 0.002, 0.14);
+        this.tone(1175, 'triangle', 0.002, 0.14, 0.09);
+        this.tone(1568, 'triangle', 0.002, 0.3, 0.18);
+        this.noiseBurst(0.16, 0.06, 'highpass', 4000);
     }
 
     /** "FIGHT!" stand-in until a real voice file is dropped in: a rising power chord and a crash. */

@@ -7,7 +7,8 @@ import { writeFileSync } from 'node:fs';
 
 // Group sizes like the real ones: very different, which is exactly why fights use the average per employee.
 const sizes = { 'СР1': 12, 'СР2': 9, 'СР3': 12, 'СР5': 16, 'СР6': 5, 'СР9': 11 };
-const stars = { 'СР1': 5, 'СР2': 4, 'СР3': 4, 'СР5': 3, 'СР6': 5, 'СР9': 4 };
+// Stars are days won; two days are over (dayIndex 2), so the two of a pair add up to at most 2.
+const stars = { 'СР1': 1, 'СР2': 0, 'СР3': 1, 'СР5': 2, 'СР6': 1, 'СР9': 1 };
 
 const surnames = ['Орлова', 'Белов', 'Громова', 'Лисицын', 'Соловьёва', 'Ковалёв', 'Рябова', 'Мельников', 'Зайцева', 'Прохоров',
     'Дроздова', 'Субботин', 'Журавлёва', 'Кабанов', 'Ширяева', 'Тарасов', 'Воронина', 'Гладков', 'Лукина', 'Фомин',

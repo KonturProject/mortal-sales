@@ -14,7 +14,7 @@ export const GAME = {
     RENDER_SCALE: QUALITY.renderScale,
 } as const;
 
-/** Working days in a match (the week) and lives each leader starts it with. */
+/** Working days in a match (the week) and the star slots of a leader: a star is a day won, so the slots cover a full week. */
 export const MATCH = {
     DAYS: 5,
     STARS: 5,
@@ -35,9 +35,9 @@ export const MATCH = {
  */
 export const ARENA = {
     LANES: [
-        { y: 614, scale: 0.64, homeLeft: 300, homeRight: 980, clashX: 640 },
-        { y: 657, scale: 0.75, homeLeft: 205, homeRight: 1075, clashX: 470 },
-        { y: 700, scale: 0.86, homeLeft: 115, homeRight: 1165, clashX: 810 },
+        { y: 614, scale: 0.74, homeLeft: 300, homeRight: 980, clashX: 640 },
+        { y: 657, scale: 0.86, homeLeft: 205, homeRight: 1075, clashX: 470 },
+        { y: 700, scale: 0.99, homeLeft: 115, homeRight: 1165, clashX: 810 },
     ],
     /** Hero textures are built at 2x their on-screen size (tools/build-sprites.py). */
     TEXTURE_SCALE: 0.5,

@@ -26,42 +26,42 @@
   "leaders": [
     {
       "rop": "СР1",
-      "stars": 5,
+      "stars": 1,
       "staff": 12,
       "dayCount": 12,
       "periodCount": 123
     },
     {
       "rop": "СР2",
-      "stars": 4,
+      "stars": 0,
       "staff": 9,
       "dayCount": 7,
       "periodCount": 109
     },
     {
       "rop": "СР3",
-      "stars": 4,
+      "stars": 1,
       "staff": 12,
       "dayCount": 12,
       "periodCount": 160
     },
     {
       "rop": "СР5",
-      "stars": 3,
+      "stars": 2,
       "staff": 16,
       "dayCount": 8,
       "periodCount": 179
     },
     {
       "rop": "СР6",
-      "stars": 5,
+      "stars": 1,
       "staff": 5,
       "dayCount": 0,
       "periodCount": 69
     },
     {
       "rop": "СР9",
-      "stars": 4,
+      "stars": 1,
       "staff": 11,
       "dayCount": 6,
       "periodCount": 117

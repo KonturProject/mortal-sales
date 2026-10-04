@@ -171,7 +171,7 @@ export class HUDScene extends Scene {
                 { sum: GameState.dayCount(pair.left), staff: GameState.leader(pair.left)?.staff ?? 0 },
                 { sum: GameState.dayCount(pair.right), staff: GameState.leader(pair.right)?.staff ?? 0 },
             );
-            bar.setStars(GameState.leader(pair.left)?.stars ?? MATCH.STARS, GameState.leader(pair.right)?.stars ?? MATCH.STARS);
+            bar.setStars(GameState.leader(pair.left)?.stars ?? 0, GameState.leader(pair.right)?.stars ?? 0);
         });
 
         const { period } = GameState;
@@ -222,9 +222,9 @@ export class HUDScene extends Scene {
             for (const result of payload.results) {
                 const bar = this.barFor(result.pairId);
                 if (!bar) continue;
-                // The data already holds the verdict (stars lost, day counters back to zero); show the day as it was until the animation says otherwise.
+                // The data already holds the verdict (the winner's star, day counters back to zero); show the day as it was until the animation says otherwise.
                 bar.holdStars(true);
-                bar.forceStars(result.starsBefore[result.left] ?? MATCH.STARS, result.starsBefore[result.right] ?? MATCH.STARS);
+                bar.forceStars(result.starsBefore[result.left] ?? 0, result.starsBefore[result.right] ?? 0);
                 bar.lockForRound({ left: result.leftAvg, right: result.rightAvg });
             }
         }
@@ -240,9 +240,8 @@ export class HUDScene extends Scene {
         if (this.finale?.demo) return;
         const bar = this.barFor(result.pairId);
         if (!bar || result.winner === 'draw') return;
-        const loser = result.winner === result.left ? result.right : result.left;
         bar.flashName(result.winner);
-        void bar.breakStar(loser, result.starsAfter[loser] ?? 0);
+        void bar.earnStar(result.winner, result.starsAfter[result.winner] ?? 0);
     }
 
     private onFinaleEnd(payload: FinalePayload) {

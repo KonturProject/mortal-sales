@@ -64,8 +64,7 @@ export function overviewTab(ctx: Ctx): Tab {
             const lines = status.pairs.map(pair => {
                 const v = verdict(ctx, pair.left, pair.right);
                 if (v.winner === 'draw') return `${pair.left} ${fmtAvg(v.la)} = ${fmtAvg(v.ra)} ${pair.right} — ничья, звёзды не меняются`;
-                const loser = v.winner === pair.left ? pair.right : pair.left;
-                return `${pair.left} ${fmtAvg(v.la)} : ${fmtAvg(v.ra)} ${pair.right} — побеждает ${v.winner}, ${loser} теряет звезду`;
+                return `${pair.left} ${fmtAvg(v.la)} : ${fmtAvg(v.ra)} ${pair.right} — побеждает ${v.winner} и получает звезду`;
             });
             const last = status.period.dayIndex + 1 >= status.period.daysTotal;
             if (!confirm(`Завершить день ${status.period.dayIndex + 1}?\n\n${lines.join('\n')}\n\n${last ? 'Это последний день недели: будет решён матч каждой пары.\n\n' : ''}Счётчики дня обнулятся, на экранах начнётся финал. Отменить нельзя (звёзды можно поправить вручную ниже).`)) return;
@@ -77,7 +76,7 @@ export function overviewTab(ctx: Ctx): Tab {
 
         const newWeekButton = h('button', { type: 'button', className: 'ghost' }, 'Начать новую неделю');
         newWeekButton.addEventListener('click', () => void ctx.guard(newWeekButton, async () => {
-            if (!confirm('Начать новую неделю?\n\nЗвёзды у всех вернутся к 5, счётчики недели и дня обнулятся, матч начнётся заново.')) return;
+            if (!confirm('Начать новую неделю?\n\nЗвёзды у всех обнулятся, счётчики недели и дня тоже, матч начнётся заново.')) return;
             const res = await ctx.call<{ periodId: number }>('newPeriod', { requestId: newRequestId() });
             ctx.setStatus(`Началась неделя № ${res.periodId}.`, 'ok');
             await ctx.refresh();
@@ -87,7 +86,7 @@ export function overviewTab(ctx: Ctx): Tab {
             h('div', { className: 'btn-row' }, finishButton, newWeekButton),
             h('p', { className: 'hint' }, finished
                 ? 'Неделя завершена: победители пар показаны на экране. Загрузка данных закрыта до начала новой недели.'
-                : 'Кнопка завершает игровой день: в каждой паре побеждает тот, у кого выше среднее на сотрудника, проигравший теряет звезду. Ничья звёзд не меняет.'),
+                : 'Кнопка завершает игровой день: в каждой паре побеждает тот, у кого выше среднее на сотрудника, и получает звезду. Ничья звёзд не меняет.'),
         ));
 
         // --- manual stars
@@ -103,11 +102,11 @@ export function overviewTab(ctx: Ctx): Tab {
         });
         element.append(section('Звёзды: ручная поправка',
             table([{ text: 'Подразделение' }, { text: 'Звёзды' }, { text: 'Побед / ничьих / поражений за неделю' }, { text: '' }], starsRows),
-            h('p', { className: 'hint' }, 'Для ошибочного «Завершить день» или дня, который решили не засчитывать. На экране изменение появится при ближайшем опросе, без анимации.'),
+            h('p', { className: 'hint' }, 'Звезда — выигранный день недели. Для ошибочного «Завершить день» или дня, который решили не засчитывать. На экране изменение появится при ближайшем опросе, без анимации.'),
         ));
 
         // --- settings: days per week, target average
-        const days = h('input', { type: 'number', min: '1', max: '10', step: '1', value: String(settings.daysPerPeriod) });
+        const days = h('input', { type: 'number', min: '1', max: '5', step: '1', value: String(settings.daysPerPeriod) });
         const target = h('input', { type: 'number', min: '0.05', max: '50', step: '0.05', value: String(settings.targetAvg) });
         const saveSettings = h('button', { type: 'button', className: 'ghost' }, 'Сохранить');
         saveSettings.addEventListener('click', () => void ctx.guard(saveSettings, async () => {
@@ -116,7 +115,7 @@ export function overviewTab(ctx: Ctx): Tab {
             await ctx.refresh();
         }));
         element.append(section('Настройки',
-            h('div', { className: 'inline-field' }, h('label', {}, 'Дней до решающего матча'), days),
+            h('div', { className: 'inline-field' }, h('label', {}, 'Дней до решающего матча (1–5)'), days),
             h('div', { className: 'inline-field' }, h('label', {}, 'Цель: среднее счетов на сотрудника'), target, saveSettings),
             h('p', { className: 'hint' }, 'Цель — результат, который считается хорошим (сейчас 1,20). От неё зависит сила боя на экране: разрыв между подразделениями измеряется в долях цели. '
                 + 'Например, при цели 1,20 разрыв 1,92 против 2,42 (0,50) — это 42 % цели, и бой заканчивается нокдауном. Исход дня («кто выиграл») от цели не зависит.'),

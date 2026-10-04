@@ -5,6 +5,7 @@ import { GameState, StatusResponse, average } from './game/core/GameState';
 import { DataPollingService } from './game/systems/DataPollingService';
 import { AudioSystem } from './game/systems/Audio';
 import { plan } from './game/systems/FightPlanner';
+import { MATCH } from './game/core/Constants';
 
 /** Ids for the `finale` commands the debug hooks hand to the polling pipeline (they only have to keep rising). */
 let debugCommandId = 1000;
@@ -21,9 +22,9 @@ function dayResults(winners: Record<number, string>, stars: Record<string, numbe
         const rightAvg = average(rightSum, rightStaff);
         const natural = Math.abs(leftAvg - rightAvg) < 1e-9 ? 'draw' : leftAvg > rightAvg ? pair.left : pair.right;
         const winner = winners[pair.id] ?? natural;
-        const starsBefore = { [pair.left]: stars[pair.left] ?? 5, [pair.right]: stars[pair.right] ?? 5 };
+        const starsBefore = { [pair.left]: stars[pair.left] ?? 0, [pair.right]: stars[pair.right] ?? 0 };
         const starsAfter = { ...starsBefore };
-        if (winner !== 'draw') starsAfter[winner === pair.left ? pair.right : pair.left]--;
+        if (winner !== 'draw') starsAfter[winner] = Math.min(MATCH.STARS, starsAfter[winner] + 1); // a star is a day won
         return { pairId: pair.id, left: pair.left, right: pair.right, winner, leftAvg, rightAvg, leftSum, rightSum, leftStaff, rightStaff, starsBefore, starsAfter };
     });
 }
@@ -87,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             /**
              * `__debug.finishDay({ 1: 'СР1', 2: 'draw' })` — what pressing "finish the day" causes end to end: a status whose groups
-             * have already lost their stars and whose day counters are back at zero, carrying a real (non-demo) `finale` command.
+             * already hold the winner's star and whose day counters are back at zero, carrying a real (non-demo) `finale` command.
              * Pairs not listed are decided by the day's averages. On the fifth day the week's match is decided too.
              */
             finishDay: (winners: Record<number, string> = {}) => {
@@ -122,13 +123,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     commands: [{ id: debugCommandId, type: 'finale', args: payload as unknown as Record<string, unknown>, issuedAt: now }],
                 });
             },
-            /** `__debug.newWeek()` — the admin's "new week": stars back to 5, the match running again. */
+            /** `__debug.newWeek()` — the admin's "new week": no stars, the match running again. */
             newWeek: () => {
                 DataPollingService.applyForDebug({
                     ok: true,
                     period: { id: GameState.period.id + 1, dayIndex: 0, daysTotal: GameState.period.daysTotal, state: 'active' },
                     pairs: GameState.pairs,
-                    leaders: GameState.leaders.map(l => ({ ...l, stars: 5, dayCount: 0, periodCount: 0 })),
+                    leaders: GameState.leaders.map(l => ({ ...l, stars: 0, dayCount: 0, periodCount: 0 })),
                     managers: GameState.managers.map(m => ({ ...m, day: 0, period: 0 })),
                     lastImport: GameState.lastImport,
                     lastUpdated: new Date().toISOString(),

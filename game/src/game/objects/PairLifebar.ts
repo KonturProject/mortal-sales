@@ -34,7 +34,7 @@ export interface Caption {
  * relative to the pair's leader, so the trailing side's bar is visibly shorter; both start full at 0:0.
  *
  * Two things can take a row out of the polling flow: a fight round drags the bars blow by blow (`lockForRound`),
- * and a finale holds the stars until the animation breaks one (`holdStars`). While either is on, plain data
+ * and a finale holds the stars until the animation lights one (`holdStars`). While either is on, plain data
  * updates leave that part alone.
  */
 export class PairLifebar extends GameObjects.Container {
@@ -45,7 +45,7 @@ export class PairLifebar extends GameObjects.Container {
     private shown = { left: 0, right: 0 };
     /** How many animations (a round, a finale) are holding the bars at their "before" picture; the data may not move them while > 0. */
     private locks = 0;
-    /** Same idea for the stars: a finale holds them at their "before" picture until it breaks one. */
+    /** Same idea for the stars: a finale holds them at their "before" picture until it lights one. */
     private starHolds = 0;
     private lockToken = 0;
     private captions: { left: Caption; right: Caption } | null = null;
@@ -188,9 +188,10 @@ export class PairLifebar extends GameObjects.Container {
         this.right.stars.setCount(right);
     }
 
-    breakStar(rop: string, starsAfter: number): Promise<void> {
+    /** The winner of the day gets the next star (the finale's reward). */
+    earnStar(rop: string, starsAfter: number): Promise<void> {
         const view = this.left.rop === rop ? this.left : this.right.rop === rop ? this.right : null;
-        return view ? view.stars.breakStar(starsAfter) : Promise.resolve();
+        return view ? view.stars.earnStar(starsAfter) : Promise.resolve();
     }
 
     /* ------------------------------------------------------------- draw */
