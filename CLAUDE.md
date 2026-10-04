@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 (`KonturProject/sales-vs-dragon`, which is a separate, running product — never touch its repo, sheet or Web App from here). Six pixel-art department
 mascots (the same heroes) are the leaders (РГ, "группа") of six sales departments; they are set in 3 pairs and fight Mortal-Kombat style in a temple
 courtyard, three on each side, seen from a distance. Every import of "invoices from 20 minutes" per manager (about every 2 hours, uploaded through the
-admin page) starts a round of fights; the admin ends the *game day* with a button, which plays a finale ("FINISH HIM!") and gives a star (one per day won,
+admin page) starts a round of fights; the admin ends the *game day* with a button, which plays a finale ("FINISH HER!") and gives a star (one per day won,
 at most 5 per leader per week; a week starts with none) to each pair's winner. After 5 days the pair's match goes to the one with more stars. A rating of all managers (absolute invoice counts)
 is shown in two side panels. Russian UI everywhere.
 
@@ -29,7 +29,9 @@ string in a test fixture). `npm run deploy` runs `game/tools/deploy-guard.mjs` f
 The repo's `Code.gs` keeps the placeholder `SPREADSHEET_ID`: the deployed copy (container-bound script of the new sheet "Mortal Sales - данные", deployed by hand) has the real one, and the PIN is set from the sheet's menu
 "Mortal Sales" — neither is ever committed.
 **Employee data never goes into git**: `*.xlsx/*.xls/*.csv` are ignored, mock data (`tools/make-mock-status.mjs`, `apps-script/test/mock-roster.json`) is
-invented. Third-party audio goes in git-ignored `game/public/assets/audio/` (the repo and Pages are public).
+invented. The announcer clips and the fight theme in `game/public/assets/audio/` ARE committed and published on Pages — the owner decided so
+(2026-10-04, non-commercial office display). The owner drops raw files into the git-ignored `sounds/` (and art into `game/assets-source/animation and new model/`)
+while you work: read `git status` before every commit and stage by path.
 
 ## Commands
 
@@ -40,11 +42,12 @@ npm run dev                 # dev server http://127.0.0.1:8080 (bound to IPv4 on
 npm run build               # production build to game/dist: two entries, index.html (game) + admin.html
 npx tsc --noEmit -p tsconfig.json
 npm run test:fight          # node --test, 33 tests: FightPlanner, pure game logic (FightPairs, names), admin file parsers (node >= 22.18 runs the .ts directly — so the pure modules import with explicit .ts and `import type`; the parser tests also read the real xlsx files from the repo root when present)
-npm run test:backend        # node --test, 49 tests: the real apps-script/Code.gs against fake Google services
+npm run test:backend        # node --test, 50 tests: the real apps-script/Code.gs against fake Google services
 npm run serve-dist          # the production build under /mortal-sales/ like GitHub Pages (http://127.0.0.1:8090/mortal-sales/) — run `npm run build` first
 npm run mock-backend        # Code.gs on http://127.0.0.1:8787/exec (PIN 1234, display key mock-display-key-1234, 65 invented managers, in memory)
 node tools/make-mock-status.mjs   # regenerate public/assets/mock/mock-status.json and apps-script/test/mock-roster.json (invented names)
-python tools/build-sprites.py     # hero sprites from assets-source/character-refs (Pillow); output is byte-identical to what is shipped
+python tools/build-sprites.py     # hero sprites from assets-source/character-refs + "animation and new model" (Pillow); output is byte-identical to what is shipped.
+                                  # New poses: add (file, factor) to HEROES; tune the factor on a contact sheet (head/crown = the standing sprite's), bump `hits` in heroRoster.json
 ```
 
 Try the whole thing locally: `npm run mock-backend`, then game `http://127.0.0.1:8080/?backend=http://127.0.0.1:8787/exec#key=mock-display-key-1234` and admin
@@ -69,7 +72,8 @@ The background `bg_arena.jpg` has only ~20 % floor, hence the narrow lanes and t
 meet at different x (`clashX`) so neighbours don't stand on each other. `Fighter` (`objects/Fighter.ts`) is a feet-anchored container; every move is a Promise that resolves when it
 has *landed* (a strike: at contact): `walkTo/stepIn/goHome`, `strike(target, kind, onImpact)`, `react(kind, push)` (`flinch/stagger/stun/knockdown/launch`), `getUp`, `celebrate`, `bow`,
 `stayDown`. **One move at a time**: every move starts with `halt()` (kills the container's and the sprite's tweens, resets the sprite pivot, takes a new `epoch`) and every `await` goes through
-`step()`/`rest()`, which return false when another move took over — an interrupted move must then return, or its tail would swap the pose and start a tween in the middle of the new move. Moves use art from the hero's pools when it exists (`RosterConfig.poseKeys`: legacy `hit1..N` = attack, plus `config/heroMoves.json` for kick/heavy/hurt/stun/knockdown/fly/ko/win,
+`step()`/`rest()`, which return false when another move took over — an interrupted move must then return, or its tail would swap the pose and start a tween in the middle of the new move. Moves use art from the hero's pools when it exists (`RosterConfig.poseKeys`: `hit1..N` (heroRoster.json `hits`) = attack, plus the hand-maintained `config/heroMoves.json` for kick/heavy/hurt/stun/knockdown/fly/ko/win
+— a hit pose listed there as `kick`/`heavy` is preferred for that blow; Grinch: kick = hit2, heavy = hit3 (jump), Scrooge: heavy = hit2 (money-bag swing);
 with optional `_L` left-facing variants) and fall back to plain tweens (recoil, squash, topple about the feet, spin about the body centre). `core/Async.ts` has `sleep`, `tweenTo`
 (resolves even if the tween is killed — never `await` a raw tween), `hitStop`. Right-hand fighters are mirrored (`flipX`); a hand-drawn `_L` texture wins when listed.
 A toppled body reaches a body length beyond its feet: `Fighter.lieX` keeps it inside the walls.
@@ -77,8 +81,17 @@ A toppled body reaches a body length beyond its feet: `Fighter.lieX` keeps it in
 **Fight mechanics** (`systems/FightPlanner.ts`, pure, tuning in `FIGHT_TUNING`): `D = min(1, |a−b| / target)` of the two AVERAGES (so 1.92 vs 2.42 with a 1.20 target is 42 % of the target = domination), damped by evidence `min(1, sample/10)` (sample = raw invoices of both
 groups), leader blows `2 + round(6·D_eff)`, trailing side `max(1, round(nL·(1−D_eff)^1.6))` (both always fight), four tiers (even / upper hand = stun / domination = knockdown / rout = launch across the
 arena with screen shake and hit-stop). `FightDirector` turns a plan into choreography per pair; `ArenaScene` runs the pairs of a round side by side and queues rounds/finales one after another.
-The finale: per pair "FINISH HIM!", two blows and a heavy one that launches the loser; at the landing `FINALE_PAIR` makes the HUD light the winner's next star (`StarRow.earnStar`). After the last day the matches are decided;
+The finale: per pair "FINISH HER!", two blows and a heavy one that launches the loser; at the landing `FINALE_PAIR` makes the HUD light the winner's next star (`StarRow.earnStar`)
+and the announcer says "Fatality" ("Flawless victory" when the loser had no invoices that day). After the last day the matches are decided;
 the arena then shows the verdict statically (winners labelled, losers down) — also when a display is opened after the week ended.
+
+**Sound** (`systems/Audio.ts`, one Web Audio graph under the mute button — muted by default, the speaker icon bottom-right turns it on and it is remembered):
+synthesized effects (hits, falls, the star chime) plus recorded clips (`CLIP_FILES`: fetched at start, decoded once the AudioContext exists, played from their first audible
+sample — the files carry ~0.3–0.7 s of silence). A real round opens with "РАУНД N" + "Round one/two/three" (N = `lastImport.round`, the import's number in the game day,
+from the backend; rounds after 3 get only the title), and `FIGHT.ROUND_INTRO_MS` later "FIGHT!" — the arena waits the same time before the fighters move. Both waits use the
+wall clock (`wallSleep`): the scene clock leaps when PowerSaver lifts the frame-rate limit, the voices do not. The fight theme (`theme.mp3`, 74 s loop) is held by every round
+and finale (`holdTheme`/`releaseTheme`, a counter), ducks under the announcer, fades out 2.5 s after the last release and resumes where it stopped. A missing clip falls back
+to the synthesized stinger (or silence).
 
 **Baseline & staleness gotchas** (all deliberate): the first poll after page load only sets the baseline — no fight, no finale replay, commands older than `POLL.COMMAND_MAX_AGE_MS` by the
 *backend's* clock are dropped. `HUDScene` keeps a pair's lifebars (`lockForRound`) and stars (`holdStars`) at the "before" picture while the round/finale animates, because the poll that carries the
@@ -115,11 +128,12 @@ Visual/animation changes: start the dev server, `__debug.poller.stop()`, drive t
 (`arena().fighters.get('СР1').x/angle`, `hud.lifebars[i].left.stars.value`) or sample it with `setInterval`; slow time with `scene.tweens.timeScale = scene.time.timeScale = 0.3` to catch a pose.
 A Vite reload (HMR) wipes your injected state and listeners — wait for it before injecting. The full chain (admin import → fights → finish day → finale) was verified on the mock backend with the real xlsx files.
 `npx tsc --noEmit` catches type errors but proves nothing about runtime behaviour.
+A hidden tab (the desktop app's pane when the window is minimised or the screen locked: `document.hidden`) pauses the game loop and throttles timers — the picture
+freezes mid-animation. Then drive a headless Chrome (puppeteer-core with the installed chrome.exe, `--autoplay-policy=no-user-gesture-required`) and take timed screenshots.
 
 Dev-only URL parameters: `?backend=<url>` (talk to the mock backend) and `?pollms=2000` (poll every 2 s instead of 15).
 
 ## Open items
 
-Music and the "Fight!" voice (files from the user → `public/assets/audio/`, loaded with fade; the synthesized `AudioSystem` sounds are the stand-in; `AudioSystem.unlockOnGesture()` already resumes sound after a reload),
-extra poses from the user (`assets-source/new-game/README.md`), tuning `FIGHT_TUNING` thresholds on real numbers, a full pass of the admin flow on the real backend (finish day / new week on a copy of the sheet first).
+Extra poses from the user (hurt/stun/knockdown/fly/ko/win art; more attacks), (`assets-source/new-game/README.md`), tuning `FIGHT_TUNING` thresholds on real numbers, a full pass of the admin flow on the real backend (finish day / new week on a copy of the sheet first).
 Ideas: undo for "finish day".

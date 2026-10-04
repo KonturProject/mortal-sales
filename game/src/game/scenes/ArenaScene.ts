@@ -5,7 +5,7 @@ import {
 import { GameState, PairStatus } from '../core/GameState';
 import { fitCameraToGame } from '../core/Render';
 import { ARENA, FIGHT, FINALE, GAME, MATCH } from '../core/Constants';
-import { sleep } from '../core/Async';
+import { sleep, wallSleep } from '../core/Async';
 import { RosterConfig } from '../systems/RosterConfig';
 import { DataPollingService } from '../systems/DataPollingService';
 import { FightDirector } from '../systems/FightDirector';
@@ -201,6 +201,7 @@ export class ArenaScene extends Scene {
     async playRound(payload: FightRoundPayload): Promise<void> {
         EventBus.emit(GameEvents.FIGHT_START, payload);
         try {
+            if (payload.round) await wallSleep(FIGHT.ROUND_INTRO_MS); // "РАУНД N" first; the HUD calls "FIGHT!" on the same wall-clock beat
             await Promise.all(payload.pairs.map(async (pair, i) => {
                 const seated = this.seatedPair(pair.left, pair.right);
                 if (!seated) return;

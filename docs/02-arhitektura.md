@@ -132,14 +132,14 @@ Phaser 4.0, Vite 6, TypeScript 5.7 (strict + noUnused*), `read-excel-file` (чт
 | Формулы в таблице | текст, начинающийся с `= + - @`, отклоняется |
 | Телеметрия | шаблонный `log.js` (запрос на `gryzor.co` при `dev`/`build`) удалён |
 | Деплой | `deploy-guard.mjs` не даст опубликовать в репозиторий боевой игры |
-| Музыка | `public/assets/audio/*` не попадает в git (репозиторий и Pages публичные) |
+| Музыка и голоса | `public/assets/audio/*` в репозитории и на сайте — решение владельца от 04.10 (некоммерческий офисный экран); исходники кладутся в `sounds/` (не в git) |
 
 ## Тесты
 
 | Набор | Запуск | Что проверяет |
 |---|---|---|
 | Планировщик, чистая логика, разбор файлов | `npm run test:fight` | 33 теста: ярусы и числа ударов, ваш пример 1,92 : 2,42, разбор настоящих xlsx (если лежат в корне), какие пары дерутся |
-| Бэкенд | `npm run test:backend` | 49 тестов настоящего `Code.gs` на имитации сервисов Google |
+| Бэкенд | `npm run test:backend` | 50 тестов настоящего `Code.gs` на имитации сервисов Google |
 | Типы | `npx tsc --noEmit -p tsconfig.json` | strict |
 | Сборка | `npm run build`, `npm run serve-dist` | боевая сборка из подпапки `/mortal-sales/` |
 | Руками | `npm run mock-backend` + dev-сервер | сквозной сценарий (см. [06-proverka.md](./06-proverka.md)) |
@@ -162,7 +162,7 @@ Mortal combat Tver/
     ├── public/                        config.json (адрес бэкенда, useMock), assets/{sprites,mock,audio}, style.css, favicon
     ├── src/                           игра: main.ts (+ отладочные хуки), game/{core,scenes,objects,systems,config}
     ├── src-admin/                     админка: main, api, dom, parse, readFile, styles.css, tabs/*
-    ├── assets-source/                 исходники арта: character-refs (герои), new-game/{backgrounds,animations,audio}, raw-pixel (архив)
+    ├── assets-source/                 исходники арта: character-refs (герои), «animation and new model» (новый Гринч, новые удары), new-game/{backgrounds,animations,audio}, raw-pixel (архив)
     ├── tests/                         fight-planner, game-logic, admin-parse
     ├── tools/                         build-sprites.py, mock-backend, make-mock-status, deploy-guard, serve-dist
     └── vite/                          конфигурации dev / prod
@@ -174,4 +174,5 @@ Mortal combat Tver/
 - Ошибочное «Завершить день» нельзя отменить (звёзды правятся вручную, счётчики — в таблице).
 - Экран, который был выключен во время финала, его не покажет (состояние при этом верное). Команды живут 2 минуты по часам сервера.
 - Две загрузки между двумя опросами экрана (15 с) сливаются в один бой.
-- Музыки и голоса «Fight!» пока нет (заглушка — синтезированные звуки), дополнительных поз героев нет (всё работает на движении).
+- Позы есть только для ударов (у Скруджа 4, у остальных по 3); получение удара, падение, полёт и победа изображаются движением.
+- Звук на экране включается кнопкой один раз; без флага `--autoplay-policy=no-user-gesture-required` после перезагрузки нужен клик по экрану.

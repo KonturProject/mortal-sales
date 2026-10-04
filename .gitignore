@@ -3,11 +3,10 @@ dist
 dist-ssr
 *.local
 
-# Third-party music / voice files: the repo and its Pages site are public, so they stay local
+# Raw third-party music / voice sources stay local. The clips the game plays (game/public/assets/audio) ARE committed and
+# published on Pages: the owner decided so on 2026-10-04 (non-commercial office display), and the site must be rebuildable.
 game/assets-source/new-game/audio/*
 !game/assets-source/new-game/audio/.gitkeep
-game/public/assets/audio/*
-!game/public/assets/audio/.gitkeep
 
 # Real employee data (names, invoice counts): never in the repo. The admin page imports these files; the repo only has fake mock data.
 *.xlsx

@@ -2,17 +2,75 @@ const STORAGE_KEY = 'mortal_sales_muted';
 const MASTER_VOLUME = 0.6;
 
 /**
- * Purely-synthesized sound effects via the raw Web Audio API — there are no
- * audio files to load, so Phaser's Sound manager (built around loaded audio
- * assets) doesn't fit here. Defaults to muted (this is an always-on office
- * display, not something that should make noise unprompted); the mute
- * button's own first click is the user gesture that satisfies the browser's
- * autoplay policy and creates/resumes the AudioContext.
+ * Recorded clips in public/assets/audio: the announcer's calls and the fight theme. They are fetched at start and decoded
+ * once the audio context exists; a missing file is fine — the synthesized stand-ins below play instead.
+ */
+export const CLIP_FILES = {
+    fight: 'fight.mp3',
+    round1: 'round1.mp3',
+    round2: 'round2.mp3',
+    round3: 'round3.mp3',
+    finish: 'finish-her.mp3',
+    fatality: 'fatality.mp3',
+    flawless: 'flawless-victory.mp3',
+    theme: 'theme.mp3',
+} as const;
+export type Clip = keyof typeof CLIP_FILES;
+export type Voice = Exclude<Clip, 'theme'>;
+
+/** Rounds of a day that have their own call ("Round one" ... "Round three"); later rounds only get "Fight!". */
+export const VOICED_ROUNDS = 3;
+
+const THEME_VOLUME = 0.32;
+/** The theme steps back while the announcer speaks. */
+const THEME_DUCKED = 0.1;
+const THEME_FADE_IN_S = 0.6;
+const THEME_FADE_OUT_S = 1.8;
+/** The theme plays on this long after the last fight / finale before it fades, so back-to-back animations keep one tune. */
+const THEME_TAIL_MS = 2500;
+
+interface DecodedClip {
+    buffer: AudioBuffer;
+    /** The audible part, seconds: recordings come with silence around the call, which would put the voice late. */
+    start: number;
+    end: number;
+}
+
+/** Where the sound in a buffer begins and ends (anything below 4 % of the peak counts as silence). */
+function audibleRange(buffer: AudioBuffer): { start: number; end: number } {
+    const data = buffer.getChannelData(0);
+    let peak = 0;
+    for (let i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i]));
+    const threshold = Math.max(0.005, peak * 0.04);
+    let first = 0;
+    while (first < data.length && Math.abs(data[first]) < threshold) first++;
+    let last = data.length - 1;
+    while (last > first && Math.abs(data[last]) < threshold) last--;
+    if (first >= last) return { start: 0, end: buffer.duration };
+    return { start: Math.max(0, first / buffer.sampleRate - 0.015), end: Math.min(buffer.duration, last / buffer.sampleRate + 0.06) };
+}
+
+/**
+ * The display's sound through the raw Web Audio API: synthesized effects (hits, falls, stars) plus the recorded
+ * announcer calls and fight theme, all through one master gain, so the mute button covers everything. Phaser's Sound
+ * manager is not used: most sounds are generated, and one graph is simpler to mute and duck. Defaults to muted (this is
+ * an always-on office display, not something that should make noise unprompted); the mute button's own first click is
+ * the user gesture that satisfies the browser's autoplay policy and creates/resumes the AudioContext.
  */
 class AudioSystemImpl {
     private ctx: AudioContext | null = null;
     private masterGain: GainNode | null = null;
     private muted = localStorage.getItem(STORAGE_KEY) !== 'false';
+
+    /** Fetched but not yet decoded (no audio context yet), and decoded clips. */
+    private fetched = new Map<Clip, ArrayBuffer>();
+    private clips = new Map<Clip, DecodedClip>();
+
+    private theme: { src: AudioBufferSourceNode; gain: GainNode; startedAt: number; offset: number } | null = null;
+    /** Where the theme stopped last time (seconds into the audible part), so the office does not hear the same intro all day. */
+    private themeResumeAt = 0;
+    private themeHolds = 0;
+    private themeStopTimer: number | null = null;
 
     /** Safe to call repeatedly — a no-op after the first call. Must run inside a user-gesture handler. */
     init() {
@@ -22,6 +80,140 @@ class AudioSystemImpl {
         this.masterGain = this.ctx.createGain();
         this.masterGain.gain.value = this.muted ? 0 : MASTER_VOLUME;
         this.masterGain.connect(this.ctx.destination);
+        this.decodeFetched();
+    }
+
+    /** Starts fetching every recorded clip (relative to the page, like the other assets). Call once at start. */
+    loadClips(base = 'assets/audio/') {
+        for (const [name, file] of Object.entries(CLIP_FILES) as [Clip, string][]) {
+            fetch(base + file)
+                .then(res => (res.ok ? res.arrayBuffer() : Promise.reject(new Error(`${file}: ${res.status}`))))
+                .then(bytes => {
+                    this.fetched.set(name, bytes);
+                    this.decodeFetched();
+                })
+                .catch(() => { /* no such file: the synthesized stand-in plays instead */ });
+        }
+    }
+
+    private decodeFetched() {
+        const ctx = this.ctx;
+        if (!ctx) return;
+        for (const [name, bytes] of this.fetched) {
+            this.fetched.delete(name);
+            ctx.decodeAudioData(bytes)
+                .then(buffer => {
+                    this.clips.set(name, { buffer, ...audibleRange(buffer) });
+                    if (name === 'theme' && this.themeHolds > 0) this.startTheme(); // a fight is already on
+                })
+                .catch(() => { /* undecodable file: stays silent */ });
+        }
+    }
+
+    hasClip(name: Clip): boolean {
+        return this.clips.has(name);
+    }
+
+    /** Plays an announcer call from its first audible sound. False when the clip is not there (not loaded, no sound yet). */
+    voice(name: Voice): boolean {
+        const clip = this.clips.get(name);
+        if (!clip || !this.ctx || !this.masterGain) return false;
+        const src = this.ctx.createBufferSource();
+        src.buffer = clip.buffer;
+        src.connect(this.masterGain);
+        src.start(0, clip.start, clip.end - clip.start);
+        this.duckTheme(clip.end - clip.start);
+        return true;
+    }
+
+    /** "Fight!" — the recorded call, or the synthesized stinger when there is none. */
+    announceFight() {
+        if (!this.voice('fight')) this.playFightStinger();
+    }
+
+    /** "Round one/two/three" for the first rounds of the day; nothing for later ones (the "Fight!" follows anyway). */
+    announceRound(round: number) {
+        if (round >= 1 && round <= VOICED_ROUNDS) this.voice(`round${round}` as Voice);
+    }
+
+    /** "Finish her!" — or the stinger. */
+    announceFinish() {
+        if (!this.voice('finish')) this.playFightStinger();
+    }
+
+    /* ----------------------------------------------------------- theme */
+
+    /**
+     * The fight theme plays while something is fighting: every round and finale holds it (a counter, they can queue up
+     * back to back) and lets it go at the end; after the last release it plays on for a moment and fades out.
+     */
+    holdTheme() {
+        this.themeHolds++;
+        if (this.themeStopTimer !== null) {
+            clearTimeout(this.themeStopTimer);
+            this.themeStopTimer = null;
+        }
+        this.startTheme();
+    }
+
+    releaseTheme() {
+        this.themeHolds = Math.max(0, this.themeHolds - 1);
+        if (this.themeHolds > 0 || this.themeStopTimer !== null) return;
+        this.themeStopTimer = window.setTimeout(() => {
+            this.themeStopTimer = null;
+            if (this.themeHolds === 0) this.stopTheme();
+        }, THEME_TAIL_MS);
+    }
+
+    private startTheme() {
+        const clip = this.clips.get('theme');
+        const ctx = this.ctx;
+        if (!clip || !ctx || !this.masterGain) return;
+        const now = ctx.currentTime;
+        if (this.theme) { // still playing (or fading out): bring it back up
+            const g = this.theme.gain.gain;
+            g.cancelScheduledValues(now);
+            g.setValueAtTime(g.value, now);
+            g.linearRampToValueAtTime(THEME_VOLUME, now + THEME_FADE_IN_S);
+            return;
+        }
+        const src = ctx.createBufferSource();
+        src.buffer = clip.buffer;
+        src.loop = true;
+        src.loopStart = clip.start;
+        src.loopEnd = clip.end;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(THEME_VOLUME, now + THEME_FADE_IN_S);
+        src.connect(gain).connect(this.masterGain);
+        src.start(now, clip.start + this.themeResumeAt);
+        this.theme = { src, gain, startedAt: now, offset: this.themeResumeAt };
+    }
+
+    private stopTheme() {
+        const ctx = this.ctx;
+        const clip = this.clips.get('theme');
+        if (!this.theme || !ctx || !clip) return;
+        const { src, gain, startedAt, offset } = this.theme;
+        const now = ctx.currentTime;
+        const length = clip.end - clip.start;
+        this.themeResumeAt = length > 0 ? (offset + (now - startedAt) + THEME_FADE_OUT_S) % length : 0;
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(gain.gain.value, now);
+        gain.gain.linearRampToValueAtTime(0, now + THEME_FADE_OUT_S);
+        src.stop(now + THEME_FADE_OUT_S + 0.05);
+        this.theme = null;
+    }
+
+    private duckTheme(seconds: number) {
+        if (!this.theme || !this.ctx) return;
+        const g = this.theme.gain.gain;
+        const now = this.ctx.currentTime;
+        g.cancelScheduledValues(now);
+        g.setValueAtTime(g.value, now);
+        g.linearRampToValueAtTime(THEME_DUCKED, now + 0.08);
+        g.setValueAtTime(THEME_DUCKED, now + seconds);
+        g.linearRampToValueAtTime(THEME_VOLUME, now + seconds + 0.5);
     }
 
     /**
@@ -97,7 +289,7 @@ class AudioSystemImpl {
         this.noiseBurst(0.16, 0.06, 'highpass', 4000);
     }
 
-    /** "FIGHT!" stand-in until a real voice file is dropped in: a rising power chord and a crash. */
+    /** Stand-in for a missing announcer call: a rising power chord and a crash. */
     playFightStinger() {
         [98, 147, 196].forEach((f, i) => this.tone(f, 'sawtooth', 0.01, 0.55, i * 0.03));
         this.noiseBurst(0.5, 0.18, 'lowpass', 1500);

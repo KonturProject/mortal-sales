@@ -382,6 +382,22 @@ test('the next day starts from zero: the same counts as yesterday are not a decr
     assert.equal(b.table('Снимки').at(-1)[2], 2, 'snapshots carry the id of their day');
 });
 
+test('every import knows its round in the game day: 1, 2, ... and back to 1 after the day is finished', () => {
+    const b = withTeam({ 'СР1': 1, 'СР3': 1 });
+    const round = () => b.get().lastImport.round;
+    b.post({ action: 'importSnapshot', rows: [...rowsFor('СР1', [1]), ...rowsFor('СР3', [1])] });
+    assert.equal(round(), 1);
+    b.post({ action: 'importSnapshot', rows: [...rowsFor('СР1', [2]), ...rowsFor('СР3', [1])] });
+    assert.equal(round(), 2);
+    assert.equal(b.post({ action: 'importSnapshot', rows: [...rowsFor('СР1', [9])], requestId: 'r-1' }).ok, true);
+    assert.equal(round(), 3);
+    b.post({ action: 'importSnapshot', rows: [...rowsFor('СР1', [9])], requestId: 'r-1' }); // a retried request is not a new round
+    assert.equal(round(), 3);
+    b.post({ action: 'finishDay' });
+    b.post({ action: 'importSnapshot', rows: [...rowsFor('СР1', [1])] });
+    assert.deepEqual([round(), b.get().lastImport.id], [1, 4]);
+});
+
 test('finishDay refuses without pairs', () => {
     const b = loadBackend();
     b.get();

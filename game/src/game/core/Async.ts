@@ -9,6 +9,14 @@ export function sleep(scene: Scene, ms: number): Promise<void> {
 }
 
 /**
+ * Resolves after `ms` of wall-clock time. For waits that must line up with sound: the scene clock can leap ahead when
+ * the power saver lifts the frame-rate limit (the first frames after idle), and a recorded voice runs on real time.
+ */
+export function wallSleep(ms: number): Promise<void> {
+    return new Promise<void>(resolve => window.setTimeout(resolve, Math.max(0, ms)));
+}
+
+/**
  * A tween as a promise, for readable choreography (`await fighter.walkTo(...)`).
  * A tween that gets killed (`killTweensOf`) never calls onComplete, which would leave the awaiting
  * sequence hanging forever — hence the fallback timer that resolves shortly after the tween should have ended.

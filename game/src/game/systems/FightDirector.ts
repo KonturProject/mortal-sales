@@ -4,7 +4,7 @@ import { plan, FightPlan, Tier } from './FightPlanner';
 import { EventBus, GameEvents, FinaleResult } from '../core/EventBus';
 import { FIGHT, FINALE } from '../core/Constants';
 import { hitStop, sleep } from '../core/Async';
-import { emitComicText, emitTitle } from './Fx';
+import { emitComicText, emitTitle, flashScreen } from './Fx';
 import { AudioSystem } from './Audio';
 
 /**
@@ -88,8 +88,8 @@ export class FightDirector {
             const loser = winner === left ? right : left;
             const push: Facing = winner.facing;
 
-            emitTitle(this.scene, cx, cy, 'FINISH HIM!', { size: 64, color: '#ff4a2e', stroke: '#2a0500', strokeWidth: 10, holdMs: 800 });
-            AudioSystem.playFightStinger();
+            emitTitle(this.scene, cx, cy, 'FINISH HER!', { size: 64, color: '#ff4a2e', stroke: '#2a0500', strokeWidth: 10, holdMs: 800 });
+            AudioSystem.announceFinish();
             await sleep(this.scene, 500);
 
             for (let i = 0; i < 2; i++) {
@@ -108,9 +108,18 @@ export class FightDirector {
                 hitStop(this.scene, FIGHT.HITSTOP_MS * 1.6);
                 emitComicText(this.scene, at.x, at.y - 30);
             });
-            // The star breaks as the loser hits the floor.
+            // The winner's star lights up as the loser hits the floor — and the announcer judges the finish: "Fatality",
+            // or "Flawless victory" when the loser had not a single invoice that day.
             await sleep(this.scene, FIGHT.LAUNCH_MS * 0.95);
             EventBus.emit(GameEvents.FINALE_PAIR, result);
+            const loserSum = loser === left ? result.leftSum : result.rightSum;
+            const winnerSum = winner === left ? result.leftSum : result.rightSum;
+            const flawless = loserSum === 0 && winnerSum > 0;
+            emitTitle(this.scene, cx, cy, flawless ? 'FLAWLESS VICTORY' : 'FATALITY', flawless
+                ? { size: 50, color: '#ffd23a', stroke: '#3a2400', strokeWidth: 10, holdMs: 1100 }
+                : { size: 72, color: '#d40000', stroke: '#140000', strokeWidth: 10, holdMs: 1100 });
+            if (!flawless) flashScreen(this.scene, 0x8a0000, 0.22, 160);
+            AudioSystem.voice(flawless ? 'flawless' : 'fatality');
             void winner.celebrate();
             await flight;
             await sleep(this.scene, FINALE.HOLD_MS * 0.4);

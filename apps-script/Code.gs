@@ -725,7 +725,10 @@ function actionImportSnapshot_(body) {
     var after = daySums_(model);
 
     model.settings.ImportSeq = importId;
-    model.settings.LastImport = { id: importId, at: new Date(now).toISOString(), before: before, after: after };
+    // `round`: the how-many-th import of this game day (the screens announce "Round 1, 2, 3...").
+    var previous = model.settings.LastImport;
+    var round = previous && previous.dayId === model.settings.DayId ? (Number(previous.round) || 0) + 1 : 1;
+    model.settings.LastImport = { id: importId, at: new Date(now).toISOString(), dayId: model.settings.DayId, round: round, before: before, after: after };
     writeRows_('team', teamRows_(model.team));
     appendRows_('snaps', snapshotRows);
     writeSettings_(model.settings);

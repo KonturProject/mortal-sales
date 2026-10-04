@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const game = StartGame('game-container');
     AudioSystem.unlockOnGesture();
+    AudioSystem.loadClips();
 
     if (import.meta.env.DEV) {
         const arena = () => game.scene.getScene('ArenaScene') as ArenaScene;
@@ -69,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     pairs: GameState.pairs,
                     leaders: GameState.leaders.map(l => ({ ...l, dayCount: after[l.rop] ?? l.dayCount })),
                     managers: GameState.managers,
-                    lastImport: { id: (GameState.lastImport?.id ?? 0) + 1, at: new Date().toISOString(), before, after },
+                    lastImport: { id: (GameState.lastImport?.id ?? 0) + 1, at: new Date().toISOString(), round: (GameState.lastImport?.round ?? 0) + 1, before, after },
                     lastUpdated: new Date().toISOString(),
                 });
             },

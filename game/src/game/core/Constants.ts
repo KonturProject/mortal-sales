@@ -50,6 +50,8 @@ export const ARENA = {
 
 /** Timings of one round and of the fighters' moves, ms. */
 export const FIGHT = {
+    /** A real round opens with "РАУНД N" (and the announcer's call); the fighters move on the "FIGHT!" this long after. */
+    ROUND_INTRO_MS: 1600,
     /** Between the start of one pair's round and the next one's, so the three pairs do not move in lock-step. */
     PAIR_STAGGER_MS: 420,
     STEP_IN_MS: 620,

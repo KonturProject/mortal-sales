@@ -143,7 +143,7 @@ function detectFightRound(status: StatusResponse) {
     lastImportId = imp.id;
 
     const pairs = fightPairsFor(imp, status.pairs, status.leaders);
-    if (pairs.length > 0) EventBus.emit(GameEvents.FIGHT_ROUND, { importId: imp.id, pairs } satisfies FightRoundPayload);
+    if (pairs.length > 0) EventBus.emit(GameEvents.FIGHT_ROUND, { importId: imp.id, round: imp.round, pairs } satisfies FightRoundPayload);
 }
 
 /**

@@ -6,7 +6,7 @@ import {
 import { GameState } from '../core/GameState';
 import { fmtAverage } from '../core/Names';
 import { fitCameraToGame } from '../core/Render';
-import { GAME, HUD, LIFEBAR, MATCH, POLL } from '../core/Constants';
+import { FIGHT, GAME, HUD, LIFEBAR, MATCH, POLL } from '../core/Constants';
 import { hudText } from '../core/TextStyles';
 import { shortName } from '../core/Names';
 import { RosterConfig } from '../systems/RosterConfig';
@@ -194,9 +194,21 @@ export class HUDScene extends Scene {
     /** The arena has really begun the round (it may have waited behind a finale). */
     private onFightStart(payload: FightRoundPayload) {
         this.round = new Map(payload.pairs.map(pair => [pair.pairId, pair]));
+        AudioSystem.holdTheme();
+        if (payload.round) {
+            // A real round: "РАУНД N" with the announcer, then "FIGHT!" exactly when the arena lets the fighters go.
+            emitTitle(this, GAME.WIDTH / 2, 330, `РАУНД ${payload.round}`, { size: 92, color: '#ffffff', stroke: '#16305c', holdMs: FIGHT.ROUND_INTRO_MS - 620 });
+            AudioSystem.announceRound(payload.round);
+            window.setTimeout(() => this.callFight(), FIGHT.ROUND_INTRO_MS); // wall clock, like the arena's wait and the voice
+        } else {
+            this.callFight();
+        }
+    }
+
+    private callFight() {
         emitTitle(this, GAME.WIDTH / 2, 330, 'FIGHT!', { size: 118, holdMs: 650 });
         flashScreen(this, 0xffffff, 0.22, 120);
-        AudioSystem.playFightStinger();
+        AudioSystem.announceFight();
     }
 
     private onBlow(blow: BlowPayload) {
@@ -208,6 +220,7 @@ export class HUDScene extends Scene {
     }
 
     private onFightEnd(payload: FightRoundPayload) {
+        AudioSystem.releaseTheme();
         if (!payload.demo) {
             for (const pair of payload.pairs) this.barFor(pair.pairId)?.unlockRound({ left: pair.leftAvg, right: pair.rightAvg });
         }
@@ -232,6 +245,7 @@ export class HUDScene extends Scene {
 
     private onFinaleStart(payload: FinalePayload) {
         this.finale = payload;
+        AudioSystem.holdTheme();
         emitTitle(this, GAME.WIDTH / 2, 320, `ИТОГ ДНЯ ${payload.dayNo}`, { size: 84, color: '#ffffff', stroke: '#16305c', holdMs: 900 });
         flashScreen(this, 0xffe89a, 0.18, 160);
     }
@@ -255,11 +269,24 @@ export class HUDScene extends Scene {
         }
         this.finale = null;
         this.render();
+        AudioSystem.releaseTheme();
         if (payload.periodFinished && !payload.demo) {
             emitTitle(this, GAME.WIDTH / 2, 320, 'МАТЧ НЕДЕЛИ ЗАВЕРШЁН', { size: 64, holdMs: 2600 });
             emitConfettiBurst(this, 140);
             flashScreen(this, 0xffe89a, 0.3, 200, 2);
             AudioSystem.playFanfare();
+            // A match won without a single day lost to the opponent: the announcer's "Flawless victory".
+            const flawless = payload.results.some(r => {
+                const winner = payload.matchWinners?.[String(r.pairId)];
+                if (!winner || winner === 'draw') return false;
+                return (r.starsAfter[winner === r.left ? r.right : r.left] ?? 0) === 0;
+            });
+            if (flawless) {
+                this.time.delayedCall(3300, () => {
+                    emitTitle(this, GAME.WIDTH / 2, 320, 'FLAWLESS VICTORY', { size: 72, color: '#ffd23a', stroke: '#3a2400', holdMs: 1800 });
+                    AudioSystem.voice('flawless');
+                });
+            }
         }
     }
 

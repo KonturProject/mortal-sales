@@ -33,6 +33,8 @@ export interface PairStatus {
 export interface ImportStatus {
     id: number;
     at: string;
+    /** The how-many-th import of the game day (1, 2, ...) — the round the screens announce. Absent from an older backend. */
+    round?: number;
     before: Record<string, number>;
     after: Record<string, number>;
 }

@@ -24,6 +24,8 @@ export interface FightPairPayload {
 /** An import landed (or the admin asked for a demo fight): these pairs trade blows now. */
 export interface FightRoundPayload {
     importId: number;
+    /** Round of the game day (the import's number that day): announced as "РАУНД N" before the "FIGHT!". None for a demo. */
+    round?: number;
     pairs: FightPairPayload[];
     /** Shown on request from the admin page — visual only, no bar / number changes. */
     demo?: boolean;

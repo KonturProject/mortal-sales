@@ -1,7 +1,7 @@
 {
     "heroes": [
         {"slug": "hero_lion", "sprite": "hero_lion", "name": "Лев", "color": "#e07b1f", "hits": 3},
-        {"slug": "hero_scrooge", "sprite": "hero_scrooge", "name": "Скрудж", "color": "#c9a227", "hits": 1},
+        {"slug": "hero_scrooge", "sprite": "hero_scrooge", "name": "Скрудж", "color": "#c9a227", "hits": 4},
         {"slug": "hero_grinch", "sprite": "hero_grinch", "name": "Гринч", "color": "#7ed321", "hits": 3},
         {"slug": "hero_yoda", "sprite": "hero_yoda", "name": "Йода", "color": "#2fbf8f", "hits": 3},
         {"slug": "hero_neznaika", "sprite": "hero_neznaika", "name": "Незнайка", "color": "#3fa34d", "hits": 3},

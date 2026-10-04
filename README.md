@@ -19,7 +19,7 @@ npm run dev             # терминал 2
 ```bash
 npx tsc --noEmit -p tsconfig.json   # типы
 npm run test:fight                  # 33 теста: бой, разбор файлов, логика
-npm run test:backend                # 49 тестов бэкенда
+npm run test:backend                # 50 тестов бэкенда
 npm run build                       # продакшн-сборка в game/dist
 ```
 
@@ -29,6 +29,6 @@ npm run build                       # продакшн-сборка в game/dist
 
 ## Состояние
 
-Игра, админка и бэкенд готовы и проверены (бэкенд — на имитации Google; на настоящих Google Таблицах — первый запуск 01.10.2026). Развёрнуто: репозиторий <https://github.com/KonturProject/mortal-sales>, сайт <https://konturproject.github.io/mortal-sales/> (админка — `…/admin.html`), бэкенд на Google Apps Script + Таблице. Ещё не сделано: музыка и голос «Fight!», дополнительные позы героев — см. [открытые задачи](./docs/05-izmeneniya.md#открытые-задачи).
+Игра, админка и бэкенд готовы и проверены (бэкенд — на имитации Google; на настоящих Google Таблицах — первый запуск 01.10.2026). Развёрнуто: репозиторий <https://github.com/KonturProject/mortal-sales>, сайт <https://konturproject.github.io/mortal-sales/> (админка — `…/admin.html`), бэкенд на Google Apps Script + Таблице. Звук: голоса диктора («Round 1–3», «Fight!», «Finish her», «Fatality», «Flawless victory») и музыка во время боёв. Что ещё в планах — в [открытых задачах](./docs/05-izmeneniya.md#открытые-задачи).
 
 Проект выделен из «Отделов против дракона» и намеренно изолирован от него (свой репозиторий, своя таблица, свой Apps Script; деплой защищён от публикации в репозиторий боевой игры). Файлы с ФИО сотрудников в репозиторий не кладутся.
