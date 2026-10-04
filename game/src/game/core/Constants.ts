@@ -35,9 +35,9 @@ export const MATCH = {
  */
 export const ARENA = {
     LANES: [
-        { y: 614, scale: 0.74, homeLeft: 300, homeRight: 980, clashX: 640 },
-        { y: 657, scale: 0.86, homeLeft: 205, homeRight: 1075, clashX: 470 },
-        { y: 700, scale: 0.99, homeLeft: 115, homeRight: 1165, clashX: 810 },
+        { y: 614, scale: 0.87, homeLeft: 300, homeRight: 980, clashX: 640 },
+        { y: 657, scale: 1.01, homeLeft: 205, homeRight: 1075, clashX: 470 },
+        { y: 700, scale: 1.17, homeLeft: 115, homeRight: 1165, clashX: 810 },
     ],
     /** Hero textures are built at 2x their on-screen size (tools/build-sprites.py). */
     TEXTURE_SCALE: 0.5,
